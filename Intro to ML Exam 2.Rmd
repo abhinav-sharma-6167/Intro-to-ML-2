@@ -1,0 +1,53 @@
+---
+title: "Intro to ML Final Exam 2"
+author: "Abhinav Sharma"
+date: "1/8/2021"
+always_allow_html: true
+output:
+  md_document:
+    variant: markdown_github
+
+---
+Setup - Loading libraries and setting working directory. Key libraries include ggplot2, plotly, Highcharter for exploration; data.table and dplyr data wrangling
+
+Setting up custom ggplot theme for all plotting purposes. 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE , comment=NA)
+#########################
+##Cleaning Data and EDA##
+#########################
+#Install libraries if not installed, else load them-----------------------------
+ipak <- function(pkg){
+  new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+  if (length(new.pkg)) 
+    install.packages(new.pkg, dependencies = TRUE)
+  sapply(pkg, require, character.only = TRUE)
+}
+# usage
+packages <- c("ggplot2", "plotly" , "highcharter")
+ipak(packages)
+
+options(scipen=999)
+
+#Set seed and working directory-------------------------------------------------
+set.seed(100)
+setwd("~/Documents/GitHub/Intro-to-ML-2")
+
+
+theme_custom <- function (text_size=12) { 
+    theme_bw(base_size=text_size, base_family="Avenir") %+replace% 
+        theme(
+            panel.background  = element_blank(),
+            plot.background = element_rect(fill="gray96", colour=NA), 
+            legend.background = element_rect(fill="transparent", colour=NA),
+            legend.key = element_rect(fill="transparent", colour=NA)
+        )
+}
+
+```
+
+```{r}
+
+
+
+```
