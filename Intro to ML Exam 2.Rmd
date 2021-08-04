@@ -48,6 +48,8 @@ theme_custom <- function (text_size=12) {
 
 ```{r}
 
+data(penguins, package = "palmerpenguins")
 
+hchart(penguins, "scatter", hcaes(x = flipper_length_mm, y = bill_length_mm, group = species))
 
 ```
