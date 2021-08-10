@@ -4,15 +4,18 @@ author: "Abhinav Sharma"
 date: "1/8/2021"
 always_allow_html: true
 output:
-  md_document:
-    variant: markdown_github
+  pdf_document: 
+  html_document:
+    df_print: paged
 
 ---
-Setup - Loading libraries and setting working directory. Key libraries include ggplot2, plotly, Highcharter for exploration; data.table and dplyr data wrangling
+Raw .Rmd code available at ----- https://github.com/abhinav-sharma-6167/Intro-to-ML-2
 
-Setting up custom ggplot theme for all plotting purposes. 
+
+Setup - Loading libraries and setting working directory. 
+Key libraries include ggplot2, plotly for exploration; data.table and dplyr data wrangling. Setting up custom ggplot theme for all plotting purposes. 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE , comment=NA)
+knitr::opts_chunk$set(echo = FALSE , comment=NA , fig.width=7.5, fig.height=4.5)
 #########################
 ##Cleaning Data and EDA##
 #########################
@@ -24,7 +27,7 @@ ipak <- function(pkg){
   sapply(pkg, require, character.only = TRUE)
 }
 # usage
-packages <- c("ggplot2", "plotly" , "highcharter")
+packages <- c("ggplot2", "plotly", "data.table" , "dplyr" ,"Hmisc","DescTools","mosaic")
 ipak(packages)
 
 options(scipen=999)
@@ -33,9 +36,9 @@ options(scipen=999)
 set.seed(100)
 setwd("~/Documents/GitHub/Intro-to-ML-2")
 
-
+#, base_family="Avenir"
 theme_custom <- function (text_size=12) { 
-    theme_bw(base_size=text_size, base_family="Avenir") %+replace% 
+    theme_bw(base_size=text_size) %+replace% 
         theme(
             panel.background  = element_blank(),
             plot.background = element_rect(fill="gray96", colour=NA), 
@@ -46,10 +49,132 @@ theme_custom <- function (text_size=12) {
 
 ```
 
+## Visual story telling part 1: green buildings
+
+The details given in the case helps us get a sense of the problem. To quickly summarize, the data encompasses of 7,894 commercial rental properties of which 685 are green buildings.To avail a control set for the 685 properties, the creators of this data leveraged all non-rated buildings within a quarter-mile radius of the green-certified building. On average we have 12 non-rated nearby properties for each green property. The idea is green houses would be more attractive living options given lower recurring costs, better indoor environments, longer economically valuable lives and in general, the good PR they enjoy. The goal is to validate whether investing in a green building be worth it, from an economic perspective. Specifically, in a new 15-story mixed-use building on East Cesar Chavez, just across I-35 from downtown with baseline construction costs being $100 million and a 5% expected premium for green certification.
+
+Building upon this premise, we now start exploring the data. We start by checking the number of green houses and distributions of the variables used in stat-guru's analysis to stress-test the assumptions made.
+
 ```{r}
 
-data(penguins, package = "palmerpenguins")
-
-hchart(penguins, "scatter", hcaes(x = flipper_length_mm, y = bill_length_mm, group = species))
+house_df <- data.table::fread("greenbuildings.csv")
+cat("Percentage of green buildings : \n",100*round(prop.table(table(house_df$green_rating)),4)[2],"%")
 
 ```
+
+
+```{r warning=FALSE, message=  FALSE}
+house_df$green_rating_fc <- as.factor(as.character(house_df$green_rating))
+levels (house_df$green_rating_fc) <- c("Non-green","Green")
+ggplot(house_df[house_df$leasing_rate > 10] ,aes(x= Rent , fill = green_rating_fc)) + geom_density(size = 0.25, alpha = 0.65) + theme_custom()
+
+cat("Summary Stats : ")
+round(house_df[leasing_rate > 10,by=green_rating,
+         .(Mean_Rent = mean(Rent), Med_Rent = median(Rent) , SD_Rent = sd(Rent) ,IQR_Rent = IQR(Rent))],2)
+
+cat("\n\n")
+
+```
+We see Rent for green houses is slightly larger than other houses. The rent variable is extremely right skewed so it makes sense to use median as the measure for centrality instead of mean. The statistical summary suggests Rent distribution is slightly more spread out for non-green buildings given it has higher SD and IQR. However, the graph looks pretty much the same for both categories implying, non-green building Rent has more outliers compared to green buildings.
+
+
+However, this difference in medians could arise due to multiple confounding variables. Few hypotheses for this price change could be :
+  1.    Properties with higher size may have higher rent
+  2.    Older houses might have lower rent
+  3.    Renovated houses may have higher rent
+  4.    Houses in better class society and with more amenities may have higher rent
+  5.    Houses with more Gas and Electricity costs may have higher rent, given they have more high energy-consuming facilities 
+  6.    Only specific type of green buildings (say LEED) may offer difference in rent
+
+Let's explore them one by one.
+
+
+
+```{r warning=FALSE, message=  FALSE}
+
+ggplot(house_df[house_df$leasing_rate > 10] ,aes(x= size , y = Rent , color = green_rating_fc)) + 
+  geom_point(size = 1.65, alpha = 0.55) + theme_custom() + 
+  geom_smooth(data=house_df[house_df$leasing_rate > 10 & house_df$green_rating == 0] ,aes(x=size, y=Rent , color = "Non-green trend") , method = "loess", se=F , alpha = 0.85 , fullrange = T , size = 0.4 ,  linetype = 5) + 
+  geom_smooth(data=house_df[house_df$leasing_rate > 10 & house_df$green_rating == 1] ,aes(x=size, y=Rent,  color = "Green trend") , method = "loess", se=F , alpha = 0.85  , fullrange=T ,  size = 0.4 , linetype = 5) +
+  scale_colour_manual(name="", values=c("#00BFC4","blue","#F8766D", "black"))
+
+cat("\n\n")
+```
+We observe almost no difference in Rent for green buildings vs other uptil size 900000, post which rent of non-green buildings slightly increases. However, this difference could be due to more outliers for non-green category and the confidence intervals of the fitted curves would intersect, negating any significance associated with this difference.
+
+
+```{r warning=FALSE, message=  FALSE}
+
+ggplot(house_df[house_df$leasing_rate > 10] ,aes(x= age , y = Rent , color = green_rating_fc)) + 
+  geom_point(size = 1.65, alpha = 0.55) + theme_custom() + 
+  geom_smooth(data=house_df[house_df$leasing_rate > 10 & house_df$green_rating == 0] ,aes(x=age, y=Rent , color = "Non-green trend") , method = "loess", se=F , alpha = 0.85 , fullrange = T , size = 0.4 ,  linetype = 5) + 
+  geom_smooth(data=house_df[house_df$leasing_rate > 10 & house_df$green_rating == 1] ,aes(x=age, y=Rent,  color = "Green trend") , method = "loess", se=F , alpha = 0.85  , fullrange=T ,  size = 0.4 , linetype = 5) +
+  scale_colour_manual(name="", values=c("#00BFC4","blue","#F8766D", "black"))
+
+cat("\n\n")
+```
+
+We see for houses aged 40-90 have some differenciation in rent with respect to houses being green vs non-green
+
+
+```{r warning=FALSE, message=  FALSE}
+
+ggplot(house_df[house_df$leasing_rate > 10] ,aes(x= Electricity_Costs , y = Rent , color = green_rating_fc)) + 
+  geom_point(size = 1.65, alpha = 0.55) + theme_custom() + 
+  geom_smooth(data=house_df[house_df$leasing_rate > 10 & house_df$green_rating == 0] ,aes(x=Electricity_Costs, y=Rent , color = "Non-green trend") , method = "gam", se=F , alpha = 0.85 , fullrange = T , size = 0.4 ,  linetype = 5) + 
+  geom_smooth(data=house_df[house_df$leasing_rate > 10 & house_df$green_rating == 1] ,aes(x=Electricity_Costs, y=Rent,  color = "Green trend") , method = "gam", se=F , alpha = 0.85  , fullrange=T ,  size = 0.4 , linetype = 5) +
+  scale_colour_manual(name="", values=c("#00BFC4","blue","#F8766D", "black"))
+
+cat("\n\n")
+```
+
+```{r warning=FALSE, message=  FALSE}
+
+suppressMessages(suppressWarnings(ggplot(house_df[house_df$leasing_rate > 10] ,aes(x= Gas_Costs , y = Rent , color = green_rating_fc)) + 
+  geom_point(size = 1.65, alpha = 0.55) + theme_custom() + 
+  geom_smooth(data=house_df[house_df$leasing_rate > 10 & house_df$green_rating == 0] ,aes(x=Gas_Costs, y=Rent , color = "Non-green trend") , method = "gam", se=F , alpha = 0.85 , fullrange = T , size = 0.4 ,  linetype = 5) + 
+  geom_smooth(data=house_df[house_df$leasing_rate > 10 & house_df$green_rating == 1] ,aes(x=Gas_Costs, y=Rent,  color = "Green trend") , method = "gam", se=F , alpha = 0.85  , fullrange=T ,  size = 0.4 , linetype = 5) +
+  scale_colour_manual(name="", values=c("#00BFC4","blue","#F8766D", "black")) + xlim(c(0.009,0.018))))
+
+cat("\n\n")
+```
+There's hardly any difference in Gas and electricity utilization, apart from a small segment of Gas costs between 0.011-0.012 where green buildings have lesser gas costs.
+
+Even with continuous variables, we get the sense that the difference between prices of green building vs not wouldn't be as straightforwards as difference of median rents of the two categories. The localized regression trendlines convey that for certain properties of a house, some of the price difference could be explained by confounding variables such as age, gas costs.
+
+We also explore categorical variables and check whether different categories lead to change in Rent.
+
+```{r warning=FALSE, message=  FALSE}
+
+house_df$renovated_fc <- as.factor(as.character(paste0("Renovated : ",house_df$renovated)))
+house_df$class_a_fc <- as.factor(as.character(paste0("Class A : ",house_df$class_a)))
+house_df$amenities_fc <- as.factor(as.character(paste0("Amenities : ",house_df$amenities)))
+```
+
+
+```{r warning=FALSE, message=  FALSE , fig.width=7.5, fig.height=9}
+ggplot(house_df[house_df$leasing_rate > 10] ,aes(x= Rent , fill = green_rating_fc)) + geom_density(size = 0.25, alpha = 0.65) + theme_custom() +facet_grid(renovated_fc+amenities_fc ~ class_a_fc ) + xlim(c(0,150))
+
+
+```
+
+Rent of house being green vs non-green differs widely in distribution, specifically in cases where house is renovated, is in upper class society and has additional amenities. Given, East Cesar Chavez looks very developed and say, the house has undergone renovations and includes amenities, the stat-guru's assumption of all green houses having incremental rent of $2.6 than their non-green houses is erroneous. 
+
+```{r}
+cat("The median price difference in such a case would be : $",median(house_df$Rent[house_df$amenities+house_df$renovated + house_df$class_a == 3],na.rm = T) - median(house_df$Rent[house_df$amenities+house_df$renovated + house_df$class_a == 0],na.rm = T) )
+```
+
+This implies that the duration of cost recuperation would be higher than 7.7 years. Assuming, the real difference in medians upon accounting for all confounding variables was \$ 0.75, the premium of investment in a green building would be recovered in about 26.67 years. Hence, availing green status to ensure more probitability might not be a good strategy.
+
+
+Because the proportion of green buildings in very less, thereby green vs non-green buildings have unequal sample sizes. We can use Anova to have a final comparison of means of unequal samples and remove Rent higher than 100 as outlier. We can include covariates we've explored in the EDA above such as recurring costs, size and age of building, class and amenities to quantify their effect sizes.
+
+
+```{r}
+aov_ <- aov(Rent~green_rating_fc*(size+age+renovated+class_a+class_b+amenities+Gas_Costs+Electricity_Costs+empl_gr) , house_df)
+aov_summ <- summary(aov_)
+data.table(Feature = rownames(aov_summ[[1]][5]), Coef = round(as.numeric(aov_$coefficients),4) ,F_stat = round(aov_summ[[1]][4]$`F value`,4) ,P_val = round(aov_summ[[1]][5]$`Pr(>F)`,4) )
+
+```
+
+Supporting our EDA, we see all covariates have an impact on the rent of the building and solely attributing the rent to green status by differencing medians would be incorrect.
