@@ -178,3 +178,8 @@ data.table(Feature = rownames(aov_summ[[1]][5]), Coef = round(as.numeric(aov_$co
 ```
 
 Supporting our EDA, we see all covariates have an impact on the rent of the building and solely attributing the rent to green status by differencing medians would be incorrect.
+
+
+
+## Visual story telling part 2: flights at ABIA
+
