@@ -1,7 +1,7 @@
 ---
 title: "Intro to ML Final Exam 2"
 author: "Abhinav Sharma"
-date: "1/8/2021"
+date: "16/8/2021"
 always_allow_html: true
 output:
   pdf_document: 
@@ -28,7 +28,7 @@ ipak <- function(pkg){
   sapply(pkg, require, character.only = TRUE)
 }
 # usage
-packages <- c("ggplot2", "plotly", "data.table" , "dplyr" ,"Hmisc","DescTools","mosaic","chron","quantmod","foreach","GGally","reshape2","arules","arulesViz","tidyverse","RColorBrewer","FactoMineR","factoextra")
+packages <- c("ggplot2", "plotly", "data.table" , "dplyr" ,"Hmisc","DescTools","mosaic","chron","quantmod","foreach","GGally","reshape2","arules","arulesViz","tidyverse","RColorBrewer","FactoMineR","factoextra","slam","tm","proxy","e1071","randomForest",'png',"magick")
 ipak(packages)
 
 options(scipen=999)
@@ -262,6 +262,8 @@ for(ticker in mystocks_energy_cap) {
 }
 ```
 
+As a quick check, we validate whether our ETFs have any correlation with each other. Given all ETFs somewhat follow market dynamics, some correlation is expected. However, the FNX ticker seems to have returns correlated with both the large cap securities.
+
 ```{r warning=FALSE, message=FALSE , fig.width=7.5, fig.height=8}
 # Combine all the returns in a matrix
 all_returns_energy_cap = cbind(ClCl(DBOa),ClCl(QCLNa), ClCl(RSPa),ClCl(SCHDa),ClCl(FNXa),ClCl(DESa))
@@ -271,7 +273,7 @@ all_returns_energy_cap = (na.omit(all_returns_energy_cap))
 suppressWarnings(ggpairs(all_returns_energy_cap,progress = F ,aes(alpha=0.3))+theme_custom()+ theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)))
 
 ```
-For the first possibility, 60% capital is allocated for large cap ETF, 10% capital to small and mid cap ETF's each, 10% each for alternative energy and oil/gas commodities. For this allocation, if we invest \$100k, we are 95% confident that our worst 20 trading day loss will not exceed \$8052.51 with an average profit of \$1683.2
+
 
 
 ```{r}
@@ -313,6 +315,7 @@ par(mfrow = c(2,1))
 hist(sim1[,n_days], 25 , col = 'lightblue', main = 'Portfolio 1 - Majority Large Caps' , xlab = 'Returns')
 # Profit/loss
 hist(sim1[,n_days]- initial_wealth, breaks=30 , col = 'lightblue', main = '' , xlab = 'Profit or Loss')
+abline(v = quantile(sim1[,n_days]- initial_wealth, prob=0.05) , col = 'salmon', lty=2, lwd = 2)
 ```
 
 
@@ -321,7 +324,9 @@ hist(sim1[,n_days]- initial_wealth, breaks=30 , col = 'lightblue', main = '' , x
 # 5% value at risk:
 cat("\n 5% Value at Risk : ",quantile(sim1[,n_days]- initial_wealth, prob=0.05),"\n")
 ```
-For the second possibility, 40% capital is allocated for large cap ETF, 20% capital to small and mid cap ETF's each, 10% each for alternative energy and oil/gas commodities. For this allocation, if we invest \$100k, we are 95% confident that our worst 20 trading day loss will not exceed \$8526.64 with an average profit of \$2014.5
+
+For the first possibility, 60% capital is allocated for large cap ETF, 10% capital to small and mid cap ETF's each, 10% each for alternative energy and oil/gas commodities. For this allocation, if we invest \$100k, we are 95% confident that our worst 20 trading day loss will not exceed \$8052.51 with an average profit of \$1683.2
+
 
 ```{r}
 # Now simulate many different possible futures
@@ -352,7 +357,7 @@ par(mfrow = c(2,1))
 hist(sim1[,n_days], 25 , col = 'lightblue', main = 'Portfolio 2 - Mix of mid and large caps' , xlab = 'Returns')
 # Profit/loss
 hist(sim1[,n_days]- initial_wealth, breaks=30 , col = 'lightblue', main = '' , xlab = 'Profit or Loss')
-
+abline(v = quantile(sim1[,n_days]- initial_wealth, prob=0.05) , col = 'salmon', lty=2, lwd = 2)
 ```
 ```{r}
 cat("\nMean : ",mean(sim1[,n_days]))
@@ -365,8 +370,9 @@ cat("\nAverage Profit : ",mean(sim1[,n_days] - initial_wealth))
 cat("\n 5% Value at Risk : ",quantile(sim1[,n_days]- initial_wealth, prob=0.05),"\n")
 ```
 
+For the second possibility, 40% capital is allocated for large cap ETF, 20% capital to small and mid cap ETF's each, 10% each for alternative energy and oil/gas commodities. For this allocation, if we invest \$100k, we are 95% confident that our worst 20 trading day loss will not exceed \$8526.64 with an average profit of \$2014.5
 
-For the third possibility, 20% capital is allocated for large cap ETF, 10% capital to small and mid cap ETF's each, 30% each for alternative energy and oil/gas commodities. For this allocation, if we invest \$100k, we are 95% confident that our worst 20 trading day loss will not exceed \$8625.87 with an average profit of \$2058.61
+
 
 
 ```{r}
@@ -395,7 +401,7 @@ par(mfrow = c(2,1))
 hist(sim1[,n_days], 25 , col = 'lightblue', main = 'Portfolio 3 - Majority Oil and Energy' , xlab = 'Returns')
 # Profit/loss
 hist(sim1[,n_days]- initial_wealth, breaks=30 , col = 'lightblue', main = '' , xlab = 'Profit or Loss')
-
+abline(v = quantile(sim1[,n_days]- initial_wealth, prob=0.05) , col = 'salmon', lty=2, lwd = 2)
 ```
 
 
@@ -409,6 +415,8 @@ cat("\nAverage Profit : ",mean(sim1[,n_days] - initial_wealth))
 # 5% value at risk:
 cat("\n 5% Value at Risk : ",quantile(sim1[,n_days]- initial_wealth, prob=0.05),"\n")
 ```
+
+For the third possibility, 20% capital is allocated for large cap ETF, 10% capital to small and mid cap ETF's each, 30% each for alternative energy and oil/gas commodities. For this allocation, if we invest \$100k, we are 95% confident that our worst 20 trading day loss will not exceed \$8625.87 with an average profit of \$2058.61
 
 We tried a safe bet in a stable market, with major investments in large cap in Portfolio 1. Portfolio 2 had a well-balanced portfolio with equal proportion of initial wealth distributed amidst the large caps, mid and small caps to leverage diversification benefits. Portfolio 3 had more focus on high-risk high-reward bet on oil, gas and alternative energy ETFs given their volatility. It turns out, we see best returns with our Oil and Energy heavy portfolio, however value which worst 20 trading day loss will not exceed with 95% confidence also increases the most for this portfolio, given aforementioned volatility.
 
@@ -456,8 +464,17 @@ cordata2 <- melted_cordata[melted_cordata$Var1 != melted_cordata$Var2 & melted_c
 
 ```
 
-```{r echo=FALSE, message = FALSE, warning=FALSE}
+High correlations within tags is seem within :
+1. Travel, Politics and Computers
+2. Sports fandom, Religion and Parenting
+3. College university and Online gaming
+4. Health nutrition, Outdoors and Personal fitness
+5. Cooking, Beauty and Fashion
+
+
+```{r echo=FALSE, message = FALSE, warning=FALSE , fig.width=7.5 , fig.height=8}
 ##pca and hclust
+set.seed(100)
 pca_data <- prcomp(social_marketing[,-1])
 #summary(pca_data)
 
@@ -466,7 +483,10 @@ pve <- pr_var / sum(pr_var)
 plot(pve, xlab = "Principal Components", ylab = "Proportion of Variance Explained", ylim = c(0,1), type = 'b',main = 'Variance explained vs Number of PCs')
 ```
 
-```{r echo=FALSE, message = FALSE, warning=FALSE}
+After, 7 Principal components there seems to be a drop of variation explained per component and thus this can be used for further analysis.The cumulative variance explained and variable intution from PCA: 
+
+
+```{r echo=FALSE, message = FALSE, warning=FALSE , fig.width=7.5 , fig.height=8}
 plot(cumsum(pve), xlab = "Principal Component", ylab = "Cumulative 
      Proportion of Variance Explained", ylim =c(0,1), type = 'b')
 
@@ -474,30 +494,268 @@ rot_loading <- varimax(pca_data$rotation[, 1:7])
 rot_loading
 
 ```
+Cumulative graph shows saturation proportion of variance starting beyond 7 principal components.
 
-```{r  echo=FALSE, message = FALSE, warning=FALSE}
+Similar to insights in correlation plots, we identified factors to be composed of sections related to health & fitness: health_nutrition, outdoors and personal_fitness; shopping, chatter and photo sharing related to shopping; travel, politics, news and computers, college segment: college_uni, online gaming and sports playing; chatter & photo sharing related to cooking, beauty, fashion and so on. We tried to analyze the same using hclust and k-means clustering 
+
+```{r  echo=FALSE, message = FALSE, warning=FALSE , fig.width=7.5 , fig.height=8}
 
 res.pca <- PCA(social_marketing[,-1], ncp = 7, graph = FALSE )
 res.hcpc <- HCPC(res.pca, graph = FALSE, max=90)
-#fviz_dend(res.hcpc, 
-#          cex = 0.7,                     # Label size
-#         palette = "jco",               # Color palette see ?ggpubr::ggpar
-#          rect = TRUE, rect_fill = TRUE, # Add rectangle around groups
-#          rect_border = "jco",           # Rectangle color
-#          labels_track_height = 0.8      # Augment the room for labels
-#)
-
 plot(res.hcpc)
 
 
 ```
-Recommended number of clusters = 7.
+Recommended number of clusters = 7 with hierarchial clustering. Here we get an intuition of distance between different clusters via the dendogram. We see post the cut that creates 10 clusters, the distance does not reduce considerably upon increasing number of clusters.
+
+Given number of datapoints is higher, and all variables are in the same unit (not requiring scaling) we can explore KMeans clustering with k ranging from 5 to 10 based on above graphs.
+
+```{r fig.width=7.5 , fig.height=8}
+set.seed(100)
+# function to compute total within-cluster sum of square 
+wss <- function(k) {
+  kmeans(social_marketing[,-1], k, nstart = 10 )$tot.withinss
+}
+# Compute for clusters 2-15
+k <- 5:10
+# extract wss for 2-15 clusters
+wss_values <- map_dbl(k, wss)
+plot(k, wss_values,
+       type="b", pch = 19, frame = FALSE, 
+       xlab="Number of clusters K",
+       ylab="Total within-clusters sum of squares")
+
+```
+As expected, we're getting an elbow at K = 7. Leveraging the k value for k-means clustering and analyzing the market segments formed so.
+
+```{r fig.width=7.5 , fig.height=8}
+set.seed(100)
+
+social_marketing$Num_Cluster <- kmeans(social_marketing[,-1], 7, nstart = 100, trace=FALSE)$cluster
 
 
-## 5. 
+clus_summ <- as.data.table(social_marketing)[,by=Num_Cluster, lapply(.SD, function(x) mean(x,na.rm=T)),.SDcols = !"X"]
 
+clus_summ$Num_Cluster <- NULL
+
+heatmap(as.matrix(clus_summ), main = 'KMeans Clusters mean summary' , xlab = 'Variables', ylab = 'CLusters'  )
+
+```
+ Based on the final model, below were the customer segments. Based on their mean value of features and it's deviation from overall mean, we conjecture the general characterstic of a cohort that sets them apart from the rest.
+
+Fitness Enthusiasts : Segment with cooking, personal_fitness, health_and_nutrition and relevant chatter variables higher than average
+	
+Travel Lovers : Chatter and photo sharing relevant to current events, sports fandom, travel
+	
+Shopaholics : Chatter and photo sharing relevant to shopping
+	
+News junkies : Politics, news and travel
+	
+Stylists : Chatter and photo sharing relevant to cooking, beauty and fashion
+	
+Older generation : Sports fandom, politics, religion and parenting
+	
+Teenagers or College students : Online gaming, sports playing and info related college universities
+
+
+
+## 5. Author Attribution
+
+Let us set up the readerPlain function
+
+```{r}
+readerPlain = function(fname){
+				readPlain(elem=list(content=readLines(fname)), 
+							id=fname, language='en') }
+```
+
+Let's getting the list of train folder names and print the first 5 folder names from 'C50Train'
+
+```{r}
+train_folder_names = dir("ReutersC50/C50train")
+cat(paste(train_folder_names[0:5],collapse = "\n"))
+```
+
+Getting the list of all the files from all the 50 train folders and printing the names of the first 5 txt files
+
+```{r}
+file_list_train = {}
+for (x in train_folder_names){
+  file_list_train = c(file_list_train, Sys.glob(paste0('ReutersC50/C50train/', x,'/*.txt')))}
+cat(paste(file_list_train[0:5],collapse='\n'))
+```
+
+Reading all 50 x 50 files and printing the metadata of the 1st train file 
+
+```{r}
+train_files = lapply(file_list_train, readerPlain)
+
+print(train_files[1][[1]] )
+```
+
+Let's clean up the file names by removing the directory location details. This uses the piping operator from magrittr. And let's also rename the articles. Priinting the first train file
+
+```{r}
+mynames = file_list_train %>%
+  { strsplit(., '/', fixed=TRUE) } %>%
+  { lapply(., tail, n=2) } %>%
+  { lapply(., paste0, collapse = '') } %>%
+  unlist
+names(train_files) = mynames
+train_files[1]
+```
+Now that we have the documents in a vector, let's create a text mining corpus for us to start analyzing text
+
+```{r}
+train_documents_raw = Corpus(VectorSource(train_files))
+train_documents_raw
+```
+Let's use some pre-processing/tokenization steps. tm_map just maps some function to every document in the corpus
+
+```{r warning = F}
+my_documents_train = train_documents_raw
+my_documents_train = tm_map(my_documents_train, content_transformer(tolower)) # make everything lowercase
+my_documents_train = tm_map(my_documents_train, content_transformer(removeNumbers)) # remove numbers
+my_documents_train = tm_map(my_documents_train, content_transformer(removePunctuation)) # remove punctuation
+my_documents_train = tm_map(my_documents_train, content_transformer(stripWhitespace)) ## remove excess white-space
+```
+
+Let's remove some stopwords by using the functions available in tm
+
+```{r warning = F}
+my_documents_train = tm_map(my_documents_train, content_transformer(removeWords), stopwords("en"))
+```
+
+Let's create a Document term Matrix and  remove those terms that have count 0 in >95% of docs given sparse variables wouldn't anyways be helpful
+
+```{r}
+DTM_train = DocumentTermMatrix(my_documents_train)
+DTM_train = removeSparseTerms(DTM_train, 0.95)
+DTM_train
+```
+
+Constructing TF IDF weights
+
+```{r}
+tfidf_train = weightTfIdf(DTM_train)
+X_train = as.matrix(tfidf_train)
+
+```
+
+Let's create the y values, which is, the names of folders are the names of the authors
+
+```{r}
+y_train = file_list_train %>%
+  { strsplit(., '/', fixed=TRUE) } %>%
+  { lapply(., tail, n=2) } %>%
+  { lapply(., head, n=1) } %>%
+  { lapply(., paste0, collapse = '') } %>%
+  unlist
+cat(paste(y_train[1:5],collapse='\n'))
+```
+
+Since,We have way too many features, let's try using PCA for dimensionality reduction
+
+```{r}
+scrub_cols = which(colSums(X_train) == 0)
+X_train = X_train[,-scrub_cols]
+pca_x_train = prcomp(X_train, scale=TRUE)
+pca_train = summary(pca_x_train)$importance[3,]
+plot(pca_train, xlab="Dimension",main = 'Proportion of Variance Explained')
+```
+
+We see that around 90 percent of variation in data is explained by 500 components
+
+Let's repeat all the above data processing steps for test data
+
+```{r}
+
+test_folder_names = dir("ReutersC50/C50test")
+#test_folder_names[0:5]
+file_list_test = {}
+for (x in test_folder_names)
+  {
+   file_list_test = c(file_list_test,Sys.glob(paste0('ReutersC50/C50test/', x,'/*.txt')))
+   }
+
+
+test_files = lapply(file_list_test, readerPlain)
+mynames_test = file_list_test %>%
+  { strsplit(., '/', fixed=TRUE) } %>%
+  { lapply(., tail, n=2) } %>%
+  { lapply(., paste0, collapse = '') } %>%
+  unlist
+
+
+
+names(test_files) = mynames_test
+test_documents_raw = Corpus(VectorSource(test_files))
+## Some pre-processing/tokenization steps.
+## tm_map just maps some function to every document in the corpus
+my_documents_test = test_documents_raw
+my_documents_test = tm_map(my_documents_test, content_transformer(tolower)) # make everything lowercase
+my_documents_test = tm_map(my_documents_test, content_transformer(removeNumbers)) # remove numbers
+my_documents_test = tm_map(my_documents_test, content_transformer(removePunctuation)) # remove punctuation
+my_documents_test = tm_map(my_documents_test, content_transformer(stripWhitespace)) ## remove excess white-space
+## Remove stopwords.  Always be careful with this: one person's trash is another one's treasure.
+my_documents_test = tm_map(my_documents_test, content_transformer(removeWords), stopwords("en"))
+# Ignoring words in test document matrix which are not in train document
+DTM_test = DocumentTermMatrix(my_documents_test, control = list(dictionary=Terms(DTM_train)))
+# TF-IDF
+tfidf_test = weightTfIdf(DTM_test)
+X_test = as.matrix(tfidf_test)
+# Target variable for test set - basically the name of authors(folder name)
+y_test = file_list_test %>%
+	{ strsplit(., '/', fixed=TRUE) } %>%
+	{ lapply(., tail, n=2) } %>%
+  { lapply(., head, n=1) } %>%
+	{ lapply(., paste0, collapse = '') } %>%
+	unlist
+scrub_cols_test = which(colSums(X_test) == 0)
+X_test = X_test[,-scrub_cols_test]
+
+
+new_x_test = predict(pca_x_train,newdata =X_test)[,1:500]
+
+
+```
+
+
+Our train data, target variable and test sets are ready, Let's try Random Forest and Naive Baye algorithms to predict author of any given article.
+
+```{r}
+
+nb_model =naiveBayes(as.factor(y_train) ~., data=as.data.frame(pca_x_train$x[,1:500]))
+
+nb_pred = predict(nb_model,new_x_test)
+
+nb_conf_matx <- caret::confusionMatrix(nb_pred,as.factor(y_test))
+accuracy_nb <- nb_conf_matx$overall['Accuracy']
+cat("Classification Accuracy with Naive Bayes : ",accuracy_nb,"\n")
+#nb_pred_raw = predict(nb_model,new_x_test, 'raw')
+
+```
+
+With Naive Bayes, we achieve an accuracy of 44.56 percent. Using accuracy, we get a general sense of our hit-rate, for better error metrics we may explore precision, recall values in multi-class settings as well.
+
+Let's use Random Forests with number of predictors equal to 40 and ntrees = 1600
+
+```{r}
+set.seed(1)
+
+randomforest.model = randomForest(as.factor(y_train) ~ ., data=as.data.frame(pca_x_train$x[,1:500]), ntree=1600, mtry=40, importance=TRUE)
+rf_pred = predict(randomforest.model,new_x_test)
+confusion_matrix <- caret::confusionMatrix(rf_pred,as.factor(y_test))
+accuracy <- confusion_matrix$overall['Accuracy']
+cat("Classification Accuracy with RandomForest : ",accuracy,"\n")
+```
+
+With Random forests, we achieve an accuracy of 50.96 percent with an improvement over the NB model, although computational time increases considerably in RF. Currently we removed the words in test that the model hasn't seen through train data. Ideally, we'd want to create a list of words present in the test data and absent in train and add those with 0 frequency in train corpus. 
+Essentially, similar to adding extra levels of a factor dependent variable in multi-class classification so that the train data despite having never seen a particular level is aware of it's existence.
 
 ## 6. Association Mining Rules
+
+We are trying to identify patterns in shopping behavior of customers from a list of their grocery purchase. The most common items that are found in the list:
 
 ```{r echo=FALSE, message = FALSE, warning=FALSE}
 
@@ -509,33 +767,43 @@ itemFrequencyPlot(groceries,topN=20,col=brewer.pal(8,'Pastel2'),main='Relative I
 
 ```
 
-However, I can call the same object in another chunk.
+Next we try to model for association mining rules based apriori algorithm:
 
 ```{r echo=FALSE, message = FALSE, warning=FALSE}
 #modelling
 arulesgroceries <- apriori(groceries, parameter = list(support = 0.002, confidence = 0.01, maxlen = 40))
-#inspect(arulesgroceries)
+#arules::inspect(arulesgroceries)
 
 arulesgroceries <- apriori(groceries, parameter = list(support = 0.002, confidence = 0.1, maxlen = 10))
-#inspect(arulesgroceries)
+#arules::inspect(arulesgroceries)
 
 arulesgroceries <- apriori(groceries, parameter = list(support = 0.002, confidence = 0.3, maxlen = 10))
-#inspect(arulesgroceries)
+#arules::inspect(arulesgroceries)
 
 ```
+
+We checked the results for rules varying support, confidence; we assumed that an item must occur atleast 20 times to be considered in a rule and tried to restrict confidence in successive turns, from 0.01 to 0.3, i.e. conditional probability of an item to be atleast 0.3 to be considered in the rule finally. We got around 3119 rules finally based on aforementioned conditions. Next we restrict with conditions on lift, an item should be atleast 5 times more likely to occur with the associated items in the list.
 
 
 ```{r  message = FALSE, warning=FALSE}
 
 plot(arulesgroceries)
 
-#inspect(subset(arulesgroceries, subset = lift>5))
+arules::inspect(subset(arulesgroceries, subset = lift>5))
 
 plot(head(sort(arulesgroceries, by="support"), 20),
      method="graph", control=list(cex=.9))
 
 plot(head(sort(arulesgroceries, by="lift"), 20),
      method="graph", control=list(cex=.9))
+
+
 ```
+
+```{r}
+saveAsGraph(head(arulesgroceries, n = 100, by = "lift"), file = "rules.graphml")
+
+```
+!arules_gephi.png
 
 

@@ -1,0 +1,214 @@
+---
+title: "Project 2"
+author: "Charan"
+date: "8/15/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tm)
+library(tidyverse)
+library(slam)
+library(proxy)
+```
+
+
+
+## R Markdown
+5) Author Attribution
+
+Let us set up the readerPlain function
+
+```{r echo = False}
+
+readerPlain = function(fname){
+				readPlain(elem=list(content=readLines(fname)), 
+							id=fname, language='en') }
+
+```
+
+Let's getting the list of train folder names and print the first 5 folder names from 'C50Train'
+
+```{r echo = False}
+train_folder_names = dir("C:ReutersC50/C50train")
+train_folder_names[0:5]
+```
+
+Getting the list of all the files from all the 50 train folders and printing the names of the first 5 txt files
+
+```{r echo = False}
+file_list_train = {}
+for (x in train_folder_names){
+  file_list_train = c(file_list_train, Sys.glob(paste0('C:ReutersC50/C50train/', x,'/*.txt')))}
+file_list_train[0:5]
+```
+
+Reading all 50X50 files and printing the metadata of the 1st train file 
+
+```{r echo = False}
+train_files = lapply(file_list_train, readerPlain)
+train_files[1]
+```
+
+Let's clean up the file names by removing the directory location details. This uses the piping operator from magrittr. And let's also rename the articles. Priinting the first train file
+
+```{r echo = False}
+mynames = file_list_train %>%
+  { strsplit(., '/', fixed=TRUE) } %>%
+  { lapply(., tail, n=2) } %>%
+  { lapply(., paste0, collapse = '') } %>%
+  unlist
+names(train_files) = mynames
+train_files[1]
+```
+Now that we have the documents in a vector, let's create a text mining 'corpus'
+
+```{r echo = False}
+train_documents_raw = Corpus(VectorSource(train_files))
+train_documents_raw
+```
+Let's use some pre-processing/tokenization steps. tm_map just maps some function to every document in the corpus
+
+```{r echo = False, warning = False}
+my_documents_train = train_documents_raw
+my_documents_train = tm_map(my_documents_train, content_transformer(tolower)) # make everything lowercase
+my_documents_train = tm_map(my_documents_train, content_transformer(removeNumbers)) # remove numbers
+my_documents_train = tm_map(my_documents_train, content_transformer(removePunctuation)) # remove punctuation
+my_documents_train = tm_map(my_documents_train, content_transformer(stripWhitespace)) ## remove excess white-space
+```
+
+Let's remove some stopwords by using the functions available in tm
+
+```{r echo = False, warning = False}
+my_documents_train = tm_map(my_documents_train, content_transformer(removeWords), stopwords("en"))
+```
+
+Let's create a Document term Matrix and  remove those terms that have count 0 in >95% of docs
+
+```{r echo = False}
+DTM_train = DocumentTermMatrix(my_documents_train)
+DTM_train = removeSparseTerms(DTM_train, 0.95)
+DTM_train
+```
+Constructing TF IDF weights
+
+```{r echo = False}
+tfidf_train = weightTfIdf(DTM_train)
+X_train = as.matrix(tfidf_train)
+
+```
+
+Let's create the y values, which is, the names of folders are the names of the authors
+
+```{r echo = False}
+y_train = file_list_train %>%
+  { strsplit(., '/', fixed=TRUE) } %>%
+  { lapply(., tail, n=2) } %>%
+  { lapply(., head, n=1) } %>%
+  { lapply(., paste0, collapse = '') } %>%
+  unlist
+y_train[1:5]
+```
+
+Since,We have way too many features, let's try using PCA for dimensionality reduction
+
+```{r echo = False}
+scrub_cols = which(colSums(X_train) == 0)
+X_train = X_train[,-scrub_cols]
+pca_x_train = prcomp(X_train, scale=TRUE)
+pca_train = summary(pca_x_train)$importance[3,]
+plot(pca_train, xlab="Dimension")
+```
+
+We see that around 90 percent of variation in data is explained by 500 components
+
+Let's repeat all the above data processing steps for test data
+
+```{r echo = False, warning= False}
+
+test_folder_names = dir("C:ReutersC50/C50test")
+test_folder_names[0:5]
+file_list_test = {}
+for (x in test_folder_names)
+  {
+   file_list_test = c(file_list_test,Sys.glob(paste0('C:ReutersC50/C50test/', x,'/*.txt')))
+   }
+
+
+test_files = lapply(file_list_test, readerPlain)
+mynames_test = file_list_test %>%
+  { strsplit(., '/', fixed=TRUE) } %>%
+  { lapply(., tail, n=2) } %>%
+  { lapply(., paste0, collapse = '') } %>%
+  unlist
+
+
+
+names(test_files) = mynames_test
+test_documents_raw = Corpus(VectorSource(test_files))
+## Some pre-processing/tokenization steps.
+## tm_map just maps some function to every document in the corpus
+my_documents_test = test_documents_raw
+my_documents_test = tm_map(my_documents_test, content_transformer(tolower)) # make everything lowercase
+my_documents_test = tm_map(my_documents_test, content_transformer(removeNumbers)) # remove numbers
+my_documents_test = tm_map(my_documents_test, content_transformer(removePunctuation)) # remove punctuation
+my_documents_test = tm_map(my_documents_test, content_transformer(stripWhitespace)) ## remove excess white-space
+## Remove stopwords.  Always be careful with this: one person's trash is another one's treasure.
+my_documents_test = tm_map(my_documents_test, content_transformer(removeWords), stopwords("en"))
+# Ignoring words in test document matrix which are not in train document
+DTM_test = DocumentTermMatrix(my_documents_test, control = list(dictionary=Terms(DTM_train)))
+# TF-IDF
+tfidf_test = weightTfIdf(DTM_test)
+X_test = as.matrix(tfidf_test)
+# Target variable for test set - basically the name of authors(folder name)
+y_test = file_list_test %>%
+	{ strsplit(., '/', fixed=TRUE) } %>%
+	{ lapply(., tail, n=2) } %>%
+  { lapply(., head, n=1) } %>%
+	{ lapply(., paste0, collapse = '') } %>%
+	unlist
+scrub_cols_test = which(colSums(X_test) == 0)
+X_test = X_test[,-scrub_cols_test]
+
+
+new_x_test = predict(pca_x_train,newdata =X_test)[,1:500]
+
+
+```
+
+
+Our train data, target variable and test sets are ready, Let's try Random Forest and Naive Baye algorithms to predict author of any given article.
+
+```{r echo = False}
+
+library(e1071)
+nb_model =naiveBayes(as.factor(y_train) ~., data=as.data.frame(pca_x_train$x[,1:500]))
+
+nb_pred = predict(nb_model,new_x_test)
+
+nb_conf_matx <- caret::confusionMatrix(nb_pred,as.factor(y_test))
+accuracy_nb <- nb_conf_matx$overall['Accuracy']
+accuracy_nb
+
+
+```
+
+With Naive Bayes, we achieve an accuracy of 44.56 percent
+
+
+Let's use Random Forests with number of predictors equal to 20 and ntrees = 1000
+
+```{r echo = False, warning = False}
+set.seed(1)
+library(randomForest)
+randomforest.model = randomForest(as.factor(y_train) ~ ., data=as.data.frame(pca_x_train$x[,1:500]), ntree=1000, mtry=20, importance=TRUE)
+rf_pred = predict(randomforest.model,new_x_test)
+confusion_matrix <- caret::confusionMatrix(rf_pred,as.factor(y_test))
+accuracy <- confusion_matrix$overall['Accuracy']
+accuracy
+```
+With Random forests, we achieve an accuracy of 50.32 percent
+
+
+
