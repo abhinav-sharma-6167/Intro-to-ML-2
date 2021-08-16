@@ -1,6 +1,6 @@
 ---
 title: "Intro to ML Final Exam 2"
-author: "Abhinav Sharma"
+author: "Abhinav Sharma, Anant Gupta, Charan Musunuru, Mahika Bansal"
 date: "16/8/2021"
 always_allow_html: true
 output:
@@ -805,5 +805,4 @@ saveAsGraph(head(arulesgroceries, n = 100, by = "lift"), file = "rules.graphml")
 
 ```
 !arules_gephi.png
-
 
