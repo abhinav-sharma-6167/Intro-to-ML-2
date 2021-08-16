@@ -14,6 +14,7 @@ Raw .Rmd code available at ----- https://github.com/abhinav-sharma-6167/Intro-to
 
 Setup - Loading libraries and setting working directory. 
 Key libraries include ggplot2, plotly for exploration; data.table and dplyr data wrangling. Setting up custom ggplot theme for all plotting purposes. 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE , comment=NA , fig.width=7.5, fig.height=4.5)
 #########################
@@ -86,7 +87,7 @@ However, this difference in medians could arise due to multiple confounding vari
   5.    Houses with more Gas and Electricity costs may have higher rent, given they have more high energy-consuming facilities 
   6.    Only specific type of green buildings (say LEED) may offer difference in rent
 
-Let's explore them one by one.
+Let's explore them one by one. We use the non-parametric Generalized Additive Model (GAM) based smoothening to capture the non-linearity in the trends in our scatter plots.
 
 
 
@@ -183,3 +184,49 @@ Supporting our EDA, we see all covariates have an impact on the rent of the buil
 
 ## Visual story telling part 2: flights at ABIA
 
+We start by exploring the data using summary functions such as str, summary, Hmisc::describe() and DescTools::Desc() to get a sense of the overall data. 
+
+```{r}
+abia <- data.table::fread("ABIA.csv")
+#summary(abia)
+#DescTools::Desc(abia)
+
+```
+
+Preliminary univariate EDA shows :
+1. DepTime and ArrTime have 1.4% and 1.6% missing values respectively. Variables CarrierDelay, WeatherDelay, NASDelay, SecurityDelay and LateAircraftDelay all have 80.1% missing values.
+2. There is some seasonality with respect to month with lesser flights towards year end in months Sept-Dec'08. Similarly there are fewer flights on weekends compared to weekdays.
+3. Total 16 unique airline carriers with top three carriers operating most flights being Southwest (WN), American Airlines (AA) and Continental (CO)
+4. ActualElapsedTime has bimodal distribution. ArrDelay, DepDelay distribution has very high kurtosis implying high number of outliers. Distance follows a spread-out distributions with 3 modes, meaning there could be some categorization such as local, national and international flights. Variables CarrierDelay, WeatherDelay, NASDelay, SecurityDelay and LateAircraftDelay
+5. Most incoming flights to and from Austin are connected with the cities DAL, DFW, IAH, PHX etc. 
+
+We start by studying if there is any pattern in Arrival and Departure delay by airline carriers.
+
+```{r warning=FALSE, message=FALSE}
+
+ggplot() + geom_density(data = abia , aes(x= ArrDelay,fill="Arrival Delay"),alpha=0.3 , size = 0.25)+ geom_density(data = abia , aes(x= DepDelay,fill="Departure Delay") ,alpha=0.3, size = 0.25)+facet_wrap(facets = vars(UniqueCarrier),scales = 'free') + xlim(c(-50,100)) +theme_custom() + scale_fill_manual(name='Delay Type\n', values = c('blue','salmon'))
+
+```
+
+We observe that Departure delays for most carriers are often less in magnitude (be it positive or negative) than arrival delays, with an exception being F9 carrier where arrival vs departure delays are more of less the same.
+
+```{r warning=FALSE, message=FALSE}
+#Segregate flights based on arrival or departure 
+abia_arr <- abia[Dest == 'AUS']
+abia_dep <- abia[!Dest == 'AUS']
+#abia_arr$Origin_fc = as.factor(ifelse(abia_arr$Origin %in% names(table(abia_arr$Origin)[1:5]) , abia_arr$Origin ,"Others"))
+ggplot() + geom_point(data = abia_arr , aes(x= ArrTime, y= ArrDelay , color = Distance),alpha=0.3 , size = 2.25)+facet_wrap(facets = vars(UniqueCarrier),scales = 'free_y') +theme_custom()
+
+```
+
+Above graph shows Arrival Delays for flights arriving in Austin are particularly high when there are multiple flights of the same carrier arriving with very little time between each other.This could probably be explained by the air-space congestion issue. We also see marginally more delays when flights are for longer distances. Carriers YV and B6 have higher delays associated with them.
+
+
+
+```{r warning=FALSE, message=FALSE}
+
+ggplot() + geom_point(data = abia_dep , aes(x= DepTime, y= DepDelay , color = Distance),alpha=0.3 , size = 2.25)+facet_wrap(facets = vars(UniqueCarrier),scales = 'free_y') +theme_custom()
+
+```
+
+We avail the insight into Departure delay for flights flying out from Austin. Times with multiple flights lined one after another are 
