@@ -230,3 +230,165 @@ ggplot() + geom_point(data = abia_dep , aes(x= DepTime, y= DepDelay , color = Di
 ```
 
 We avail the insight into Departure delay for flights flying out from Austin. Times with multiple flights lined one after another are 
+
+
+
+## 3 - Portfolio Modeling
+
+**Portfolio includes 6 ETF's which has a mix of large cap blend equities, mid cap blend equities, small cap blend equities, oil/gas commodity ETF and alternative energy equities. Blend equity ETF's are a mixture of growth as well as value equities.**
+
+**For the first possibility, 40% capital is allocated for large cap ETF, 10% capital to small and mid cap ETF's each, 20% each for alternative energy and oil/gas commodities. For this allocation, if we invest $100k, we are 95% confident that our worst 20 trading day loss will not exceed $8052.51 with an average profit of $1683.2**
+
+**For the second possibility, 40% capital is allocated for large cap ETF, 20% capital to small and mid cap ETF's each, 10% each for alternative energy and oil/gas commodities. For this allocation, if we invest $100k, we are 95% confident that our worst 20 trading day loss will not exceed $8526.64 with an average profit of $2014.5**
+
+**For the third possibility, 20% capital is allocated for large cap ETF, 10% capital to small and mid cap ETF's each, 30% each for alternative energy and oil/gas commodities. For this allocation, if we invest $100k, we are 95% confident that our worst 20 trading day loss will not exceed $8625.87 with an average profit of $2058.61**
+
+
+```{r}
+library(mosaic)
+library(quantmod)
+library(foreach)
+```
+
+```{r}
+# Import a few stocks
+mystocks_energy_cap = c("DBO", "QCLN", "RSP", "SCHD", "FNX", "DES")
+myprices_energy_cap = getSymbols(mystocks_energy_cap, from = "2016-08-01")
+
+for(ticker in mystocks_energy_cap) {
+	expr = paste0(ticker, "a = adjustOHLC(", ticker, ")")
+	eval(parse(text=expr))
+}
+```
+
+```{r}
+# Combine all the returns in a matrix
+all_returns_energy_cap = cbind(ClCl(DBOa),ClCl(QCLNa), ClCl(RSPa),ClCl(SCHDa),ClCl(FNXa),ClCl(DESa))
+all_returns_energy_cap = as.matrix(na.omit(all_returns_energy_cap))
+
+# Compute the returns from the closing prices
+pairs(all_returns_energy_cap)
+```
+
+```{r}
+# Now simulate many different possible futures
+# just repeating the above block thousands of times
+set.seed(100)
+initial_wealth = 100000
+sim1 = foreach(i=1:5000, .combine='rbind') %do% {
+	total_wealth = initial_wealth
+	weights = c(0.1, 0.1, 0.3, 0.3, 0.1, 0.1)
+	holdings = weights * total_wealth
+	n_days = 20
+	wealthtracker = rep(0, n_days)
+	for(today in 1:n_days) {
+		return.today = resample(all_returns_energy_cap, 1, orig.ids=FALSE)
+		holdings = holdings + holdings*return.today
+		total_wealth = sum(holdings)
+		wealthtracker[today] = total_wealth
+		holdings = weights * total_wealth
+	}
+	wealthtracker
+}
+```
+
+```{r}
+mean(sim1[,n_days])
+mean(sim1[,n_days] - initial_wealth)
+```
+
+```{r}
+hist(sim1[,n_days], 25)
+```
+
+```{r}
+# Profit/loss
+hist(sim1[,n_days]- initial_wealth, breaks=30)
+```
+
+```{r}
+# 5% value at risk:
+quantile(sim1[,n_days]- initial_wealth, prob=0.05)
+```
+
+```{r}
+# Now simulate many different possible futures
+# just repeating the above block thousands of times
+initial_wealth = 100000
+sim1 = foreach(i=1:5000, .combine='rbind') %do% {
+	total_wealth = initial_wealth
+	weights = c(0.1, 0.1, 0.2, 0.2, 0.2, 0.2)
+	holdings = weights * total_wealth
+	n_days = 20
+	wealthtracker = rep(0, n_days)
+	for(today in 1:n_days) {
+		return.today = resample(all_returns_energy_cap, 1, orig.ids=FALSE)
+		holdings = holdings + holdings*return.today
+		total_wealth = sum(holdings)
+		wealthtracker[today] = total_wealth
+		holdings = weights * total_wealth
+	}
+	wealthtracker
+}
+```
+
+```{r}
+# each row is a simulated trajectory
+# each column is a data
+hist(sim1[,n_days], 30)
+```
+```{r}
+mean(sim1[,n_days])
+mean(sim1[,n_days] - initial_wealth)
+```
+
+```{r}
+# Profit/loss
+hist(sim1[,n_days]- initial_wealth, breaks=30)
+```
+
+```{r}
+# 5% value at risk:
+quantile(sim1[,n_days]- initial_wealth, prob=0.05)
+```
+
+```{r}
+# Now simulate many different possible futures
+# just repeating the above block thousands of times
+initial_wealth = 100000
+sim1 = foreach(i=1:5000, .combine='rbind') %do% {
+	total_wealth = initial_wealth
+	weights = c(0.3, 0.3, 0.1, 0.1, 0.1, 0.1)
+	holdings = weights * total_wealth
+	n_days = 20
+	wealthtracker = rep(0, n_days)
+	for(today in 1:n_days) {
+		return.today = resample(all_returns_energy_cap, 1, orig.ids=FALSE)
+		holdings = holdings + holdings*return.today
+		total_wealth = sum(holdings)
+		wealthtracker[today] = total_wealth
+		holdings = weights * total_wealth
+	}
+	wealthtracker
+}
+```
+
+```{r}
+# each row is a simulated trajectory
+# each column is a data
+hist(sim1[,n_days], 30)
+```
+```{r}
+mean(sim1[,n_days])
+mean(sim1[,n_days] - initial_wealth)
+```
+```{r}
+# Profit/loss
+hist(sim1[,n_days]- initial_wealth, breaks=30)
+```
+
+```{r}
+# 5% value at risk:
+quantile(sim1[,n_days]- initial_wealth, prob=0.05)
+```
+
