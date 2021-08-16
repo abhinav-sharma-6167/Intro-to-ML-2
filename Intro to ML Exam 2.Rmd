@@ -28,7 +28,7 @@ ipak <- function(pkg){
   sapply(pkg, require, character.only = TRUE)
 }
 # usage
-packages <- c("ggplot2", "plotly", "data.table" , "dplyr" ,"Hmisc","DescTools","mosaic")
+packages <- c("ggplot2", "plotly", "data.table" , "dplyr" ,"Hmisc","DescTools","mosaic","chron","quantmod","foreach","GGally")
 ipak(packages)
 
 options(scipen=999)
@@ -202,31 +202,214 @@ Preliminary univariate EDA shows :
 
 We start by studying if there is any pattern in Arrival and Departure delay by airline carriers.
 
-```{r warning=FALSE, message=FALSE}
+```{r warning=FALSE, message=FALSE , fig.width=7.5, fig.height=8}
 
-ggplot() + geom_density(data = abia , aes(x= ArrDelay,fill="Arrival Delay"),alpha=0.3 , size = 0.25)+ geom_density(data = abia , aes(x= DepDelay,fill="Departure Delay") ,alpha=0.3, size = 0.25)+facet_wrap(facets = vars(UniqueCarrier),scales = 'free') + xlim(c(-50,100)) +theme_custom() + scale_fill_manual(name='Delay Type\n', values = c('blue','salmon'))
+ggplot() + geom_density(data = abia , aes(x= ArrDelay,fill="Arrival Delay"),alpha=0.3 , size = 0.35)+ geom_density(data = abia , aes(x= DepDelay,fill="Departure Delay") ,alpha=0.3, size = 0.25)+facet_wrap(facets = vars(UniqueCarrier),scales = 'free') + xlim(c(-50,100)) +theme_custom() + scale_fill_manual(name='Delay Type\n', values = c('blue','salmon'))
 
 ```
 
 We observe that Departure delays for most carriers are often less in magnitude (be it positive or negative) than arrival delays, with an exception being F9 carrier where arrival vs departure delays are more of less the same.
 
-```{r warning=FALSE, message=FALSE}
+```{r warning=FALSE, message=FALSE , fig.width=7.5, fig.height=8}
 #Segregate flights based on arrival or departure 
 abia_arr <- abia[Dest == 'AUS']
 abia_dep <- abia[!Dest == 'AUS']
 #abia_arr$Origin_fc = as.factor(ifelse(abia_arr$Origin %in% names(table(abia_arr$Origin)[1:5]) , abia_arr$Origin ,"Others"))
-ggplot() + geom_point(data = abia_arr , aes(x= ArrTime, y= ArrDelay , color = Distance),alpha=0.3 , size = 2.25)+facet_wrap(facets = vars(UniqueCarrier),scales = 'free_y') +theme_custom()
 
+ggplot() + geom_point(data = abia_arr , aes(x= ArrTime, y= ArrDelay , color = Distance),alpha=0.3 , size = 1.25)+facet_wrap(facets = vars(UniqueCarrier),scales = 'free_y') +theme_custom()+ theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
 
 Above graph shows Arrival Delays for flights arriving in Austin are particularly high when there are multiple flights of the same carrier arriving with very little time between each other.This could probably be explained by the air-space congestion issue. We also see marginally more delays when flights are for longer distances. Carriers YV and B6 have higher delays associated with them.
 
 
+```{r warning=FALSE, message=FALSE , fig.width=7.5, fig.height=8}
 
-```{r warning=FALSE, message=FALSE}
-
-ggplot() + geom_point(data = abia_dep , aes(x= DepTime, y= DepDelay , color = Distance),alpha=0.3 , size = 2.25)+facet_wrap(facets = vars(UniqueCarrier),scales = 'free_y') +theme_custom()
+ggplot() + geom_point(data = abia_dep , aes(x= DepTime, y= DepDelay , color = Distance),alpha=0.3 , size = 1.25)+facet_wrap(facets = vars(UniqueCarrier),scales = 'free_y') +theme_custom() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 ```
 
-We avail the insight into Departure delay for flights flying out from Austin. Times with multiple flights lined one after another are 
+ 
+We avail the same insight for Departure delays being more in number and magnitude when time between multiple flights lined one after another is very less. Additionally, we check for delays that are unexplained by the parameters to validate if there are any patterns therein as well.
+
+```{r warning=FALSE, message=FALSE , fig.width=7.5, fig.height=8}
+
+abia_dep[is.na(abia_dep)] <- 0
+abia_dep$UnexplainedDelay <- abia_dep$DepDelay - abia_dep$CarrierDelay - abia_dep$WeatherDelay - abia_dep$NASDelay - abia_dep$SecurityDelay - abia_dep$LateAircraftDelay
+
+ggplot() + geom_point(data = abia_dep , aes(x= DepTime, y= UnexplainedDelay , color = Distance),alpha=0.3 , size = 1.25)+facet_wrap(facets = vars(UniqueCarrier),scales = 'free_y') +theme_custom() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+```
+
+We see fewer patterns in Unexplained Delay but still flights right after one another seem to be prone to delays, specially in carriers such as MQ, WN etc.
+
+
+## 3 - Portfolio Modeling
+
+Portfolio includes 6 ETF's which has a mix of two large cap blend equities, a mid cap blend equity, a small cap blend equity, oil/gas commodity ETF and alternative energy equities. Blend equity ETF's are a mixture of growth as well as value equities, thereby ensuring an overall diverse portfolio to reduce risk associated with the investment.
+
+The stocks imported are energy, oil or gas commodities, large cap ETFs distributed between two securities, small and mid-cap respectively.
+
+
+```{r warning=FALSE, message=FALSE}
+# Import a few stocks
+mystocks_energy_cap = c("DBO", "QCLN", "RSP", "SCHD", "FNX", "DES")
+
+#Extract 5 year daily data
+myprices_energy_cap = getSymbols(mystocks_energy_cap, from = "2016-08-01")
+for(ticker in mystocks_energy_cap) {
+	expr = paste0(ticker, "a = adjustOHLC(", ticker, ")")
+	eval(parse(text=expr))
+}
+```
+
+```{r warning=FALSE, message=FALSE , fig.width=7.5, fig.height=8}
+# Combine all the returns in a matrix
+all_returns_energy_cap = cbind(ClCl(DBOa),ClCl(QCLNa), ClCl(RSPa),ClCl(SCHDa),ClCl(FNXa),ClCl(DESa))
+all_returns_energy_cap = (na.omit(all_returns_energy_cap))
+
+# Check correlations
+suppressWarnings(ggpairs(all_returns_energy_cap,progress = F ,aes(alpha=0.3))+theme_custom()+ theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)))
+
+```
+For the first possibility, 60% capital is allocated for large cap ETF, 10% capital to small and mid cap ETF's each, 10% each for alternative energy and oil/gas commodities. For this allocation, if we invest \$100k, we are 95% confident that our worst 20 trading day loss will not exceed \$8052.51 with an average profit of \$1683.2
+
+
+```{r}
+all_returns_energy_cap <- as.matrix(all_returns_energy_cap)
+set.seed(100)
+initial_wealth = 100000
+sim1 = foreach(i=1:5000, .combine='rbind')%do%{
+	total_wealth = initial_wealth
+	weights = c(0.1, 0.1, 0.3, 0.3, 0.1, 0.1)
+	holdings = weights * total_wealth
+
+	n_days = 20
+	wealthtracker = rep(0, n_days)
+
+	for(today in 1:n_days) {
+
+		return.today = resample(all_returns_energy_cap, 1, orig.ids=FALSE)
+
+		holdings = holdings + holdings*return.today
+
+		total_wealth = sum(holdings)
+
+		wealthtracker[today] = total_wealth
+
+		holdings = weights * total_wealth
+
+	}
+	wealthtracker
+}
+```
+
+```{r}
+cat("\nMean : ",mean(sim1[,n_days]))
+cat("\nAverage Profit : ",mean(sim1[,n_days] - initial_wealth))
+```
+```{r , fig.width=7.5, fig.height=8}
+par(mfrow = c(2,1))
+#Visualizing the returns distribution
+hist(sim1[,n_days], 25 , col = 'lightblue', main = 'Portfolio 1 - Majority Large Caps' , xlab = 'Returns')
+# Profit/loss
+hist(sim1[,n_days]- initial_wealth, breaks=30 , col = 'lightblue', main = '' , xlab = 'Profit or Loss')
+```
+
+
+
+```{r}
+# 5% value at risk:
+cat("\n 5% Value at Risk : ",quantile(sim1[,n_days]- initial_wealth, prob=0.05),"\n")
+```
+For the second possibility, 40% capital is allocated for large cap ETF, 20% capital to small and mid cap ETF's each, 10% each for alternative energy and oil/gas commodities. For this allocation, if we invest \$100k, we are 95% confident that our worst 20 trading day loss will not exceed \$8526.64 with an average profit of \$2014.5
+
+```{r}
+# Now simulate many different possible futures
+# just repeating the above block thousands of times
+initial_wealth = 100000
+sim1 = foreach(i=1:5000, .combine='rbind') %do% {
+	total_wealth = initial_wealth
+	weights = c(0.1, 0.1, 0.2, 0.2, 0.2, 0.2)
+	holdings = weights * total_wealth
+	n_days = 20
+	wealthtracker = rep(0, n_days)
+	for(today in 1:n_days) {
+		return.today = resample(all_returns_energy_cap, 1, orig.ids=FALSE)
+		holdings = holdings + holdings*return.today
+		total_wealth = sum(holdings)
+		wealthtracker[today] = total_wealth
+		holdings = weights * total_wealth
+	}
+	wealthtracker
+}
+```
+
+```{r , fig.width=7.5, fig.height=8}
+# each row is a simulated trajectory
+# each column is a data
+par(mfrow = c(2,1))
+#Visualizing the returns distribution
+hist(sim1[,n_days], 25 , col = 'lightblue', main = 'Portfolio 2 - Mix of mid and large caps' , xlab = 'Returns')
+# Profit/loss
+hist(sim1[,n_days]- initial_wealth, breaks=30 , col = 'lightblue', main = '' , xlab = 'Profit or Loss')
+
+```
+```{r}
+cat("\nMean : ",mean(sim1[,n_days]))
+cat("\nAverage Profit : ",mean(sim1[,n_days] - initial_wealth))
+```
+
+
+```{r}
+# 5% value at risk:
+cat("\n 5% Value at Risk : ",quantile(sim1[,n_days]- initial_wealth, prob=0.05),"\n")
+```
+
+
+For the third possibility, 20% capital is allocated for large cap ETF, 10% capital to small and mid cap ETF's each, 30% each for alternative energy and oil/gas commodities. For this allocation, if we invest \$100k, we are 95% confident that our worst 20 trading day loss will not exceed \$8625.87 with an average profit of \$2058.61
+
+
+```{r}
+
+initial_wealth = 100000
+sim1 = foreach(i=1:5000, .combine='rbind') %do% {
+	total_wealth = initial_wealth
+	weights = c(0.3, 0.3, 0.1, 0.1, 0.1, 0.1)
+	holdings = weights * total_wealth
+	n_days = 20
+	wealthtracker = rep(0, n_days)
+	for(today in 1:n_days) {
+		return.today = resample(all_returns_energy_cap, 1, orig.ids=FALSE)
+		holdings = holdings + holdings*return.today
+		total_wealth = sum(holdings)
+		wealthtracker[today] = total_wealth
+		holdings = weights * total_wealth
+	}
+	wealthtracker
+}
+```
+
+```{r , fig.width=7.5, fig.height=8}
+par(mfrow = c(2,1))
+#Visualizing the returns distribution
+hist(sim1[,n_days], 25 , col = 'lightblue', main = 'Portfolio 3 - Majority Oil and Energy' , xlab = 'Returns')
+# Profit/loss
+hist(sim1[,n_days]- initial_wealth, breaks=30 , col = 'lightblue', main = '' , xlab = 'Profit or Loss')
+
+```
+
+
+```{r}
+cat("\nMean : ",mean(sim1[,n_days]))
+cat("\nAverage Profit : ",mean(sim1[,n_days] - initial_wealth))
+```
+
+
+```{r}
+# 5% value at risk:
+cat("\n 5% Value at Risk : ",quantile(sim1[,n_days]- initial_wealth, prob=0.05),"\n")
+```
+
+We tried a safe bet in a stable market, with major investments in large cap in Portfolio 1. Portfolio 2 had a well-balanced portfolio with equal proportion of initial wealth distributed amidst the large caps, mid and small caps to leverage diversification benefits. Portfolio 3 had more focus on high-risk high-reward bet on oil, gas and alternative energy ETFs given their volatility. It turns out, we see best returns with our Oil and Energy heavy portfolio, however value which worst 20 trading day loss will not exceed with 95% confidence also increases the most for this portfolio, given aforementioned volatility.
+
+
