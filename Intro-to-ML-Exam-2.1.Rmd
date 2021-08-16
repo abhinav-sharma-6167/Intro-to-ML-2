@@ -806,3 +806,11 @@ saveAsGraph(head(arulesgroceries, n = 100, by = "lift"), file = "rules.graphml")
 ```
 !arules_gephi.png
 
+The following associations can be observed in the data:
+
+1. Liqour and bottled beer were sought out together the most as support for this combination was the highest with a significant lift as well
+
+2. It was most likely that whenever hamburger meat was bought, instant food products will be bought too. Similarly for staples like flour, sugar and milk. The lift in such combinations was ~10
+
+3. Other associations included: popcorn and salty snack, other vegetables, herbs, yogurt & rice with root vegetables, processed cheese & whole milk with white bread etc.
+ 
